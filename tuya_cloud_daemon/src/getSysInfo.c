@@ -67,26 +67,26 @@ static void board_cb(struct ubus_request *req, int type, struct blob_attr *msg)
 	memoryData->buffered = blobmsg_get_u64(memory[BUFFERED_MEMORY]);
 }
 
-double get_memory_usage(struct ubus_context *ctx, uint32_t id)
+int get_memory_usage(struct ubus_context *ctx, uint32_t id, double *memory_usage)
 {
 	if (!ctx) {
 		syslog(LOG_ERR, "NULL ubus context provided to get_memory_usage");
-		return -1.0;
+		return 1;
 	}
 
 	struct MemData memory = { 0 };
 
 	if (ubus_invoke(ctx, id, "info", NULL, board_cb, &memory, 1000)) {
-		syslog(LOG_ERR, "cannot request memory info from procd");
-		return -1.0;
+		syslog(LOG_ERR, "cannot request memory info from ubus");
+		return 1;
 	}
 
 	if (memory.total <= 0 || memory.free <= 0) {
 		syslog(LOG_ERR, "Invalid memory data received: total=%d, free=%d", memory.total, memory.free);
-		return -1.0;
+		return 1;
 	}
 
-	double used_memory_gb = (memory.total - memory.free) / (1024.0 * 1024.0 * 1024.0);
-	syslog(LOG_INFO, "Calculated used memory: %0.2f GB", used_memory_gb);
-	return used_memory_gb;
+	*memory_usage = (memory.total - memory.free) / (1024.0 * 1024.0 * 1024.0);
+	syslog(LOG_INFO, "Calculated used memory: %0.2f GB", memory_usage);
+	return 0;
 }

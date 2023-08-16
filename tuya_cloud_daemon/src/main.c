@@ -10,7 +10,6 @@
 
 #include "tuyaConnect.h"
 #include "argParser.h"
-#include "daemon.h"
 #include "getSysInfo.h"
 
 #include "tuyalink_core.h"
@@ -68,8 +67,8 @@ int main(int argc, char **argv)
 
 	while (run)
 	{
-		double memory_usage = get_memory_usage(ctx, id);
-		if (memory_usage > 0)
+		double memory_usage;
+		if (!get_memory_usage(ctx, id, &memory_usage))
 		{
 			send_memory_usage_to_tuya(client, memory_usage, args.deviceId);
 			syslog(LOG_INFO, "Sent memory usage to Tuya: %0.2f GB", memory_usage);

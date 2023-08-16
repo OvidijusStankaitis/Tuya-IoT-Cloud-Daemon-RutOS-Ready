@@ -1,36 +1,92 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <libubox/blobmsg_json.h>
+#include <libubus.h>
 #include <syslog.h>
 
 #include "getSysInfo.h"
 
-double get_memory_usage()
+struct MemData {
+	int total;
+	int free;
+	int shared;
+	int buffered;
+};
+
+enum {
+	TOTAL_MEMORY,
+	FREE_MEMORY,
+	SHARED_MEMORY,
+	BUFFERED_MEMORY,
+	__MEMORY_MAX,
+};
+
+enum {
+	MEMORY_DATA,
+	__INFO_MAX,
+};
+
+static const struct blobmsg_policy memory_policy[__MEMORY_MAX] = {
+	[TOTAL_MEMORY]	  = { .name = "total", .type = BLOBMSG_TYPE_INT64 },
+	[FREE_MEMORY]	  = { .name = "free", .type = BLOBMSG_TYPE_INT64 },
+	[SHARED_MEMORY]	  = { .name = "shared", .type = BLOBMSG_TYPE_INT64 },
+	[BUFFERED_MEMORY] = { .name = "buffered", .type = BLOBMSG_TYPE_INT64 },
+};
+
+static const struct blobmsg_policy info_policy[__INFO_MAX] = {
+	[MEMORY_DATA] = { .name = "memory", .type = BLOBMSG_TYPE_TABLE },
+};
+
+static void board_cb(struct ubus_request *req, int type, struct blob_attr *msg)
 {
-    FILE *file = fopen("/proc/meminfo", "r");
-    if (file == NULL)
-    {
-        syslog(LOG_ERR, "Error opening /proc/meminfo");
-        return -1;
-    }
+	if (!msg) {
+		syslog(LOG_ERR, "Received NULL message in board_cb");
+		return;
+	}
 
-    double total_memory;
-    double free_memory;
+	struct MemData *memoryData = (struct MemData *)req->priv;
+	struct blob_attr *tb[__INFO_MAX];
+	struct blob_attr *memory[__MEMORY_MAX];
 
-    char line[256];
-    while (fgets(line, sizeof(line), file))
-    {
-        if (sscanf(line, "MemTotal: %lf kB", &total_memory))
-        {
-            continue;
-        }
-        else if (sscanf(line, "MemAvailable: %lf kB", &free_memory))
-        {
-            continue;
-        }
-    }
+	blobmsg_parse(info_policy, __INFO_MAX, tb, blob_data(msg), blob_len(msg));
 
-    fclose(file);
+	if (!tb[MEMORY_DATA]) {
+		syslog(LOG_ERR, "No memory data received");
+		return;
+	}
 
-    double used_memory = (total_memory - free_memory) / (1024*1024);
-    return used_memory;
+	blobmsg_parse(memory_policy, __MEMORY_MAX, memory, blobmsg_data(tb[MEMORY_DATA]),
+		      blobmsg_data_len(tb[MEMORY_DATA]));
+
+	if (!memory[TOTAL_MEMORY] || !memory[FREE_MEMORY] || !memory[SHARED_MEMORY] || !memory[BUFFERED_MEMORY]) {
+		syslog(LOG_ERR, "Incomplete memory data received");
+		return;
+	}
+
+	memoryData->total    = blobmsg_get_u64(memory[TOTAL_MEMORY]);
+	memoryData->free     = blobmsg_get_u64(memory[FREE_MEMORY]);
+	memoryData->shared   = blobmsg_get_u64(memory[SHARED_MEMORY]);
+	memoryData->buffered = blobmsg_get_u64(memory[BUFFERED_MEMORY]);
+}
+
+double get_memory_usage(struct ubus_context *ctx, uint32_t id)
+{
+	if (!ctx) {
+		syslog(LOG_ERR, "NULL ubus context provided to get_memory_usage");
+		return -1.0;
+	}
+
+	struct MemData memory = { 0 };
+
+	if (ubus_invoke(ctx, id, "info", NULL, board_cb, &memory, 1000)) {
+		syslog(LOG_ERR, "cannot request memory info from procd");
+		return -1.0;
+	}
+
+	if (memory.total <= 0 || memory.free <= 0) {
+		syslog(LOG_ERR, "Invalid memory data received: total=%d, free=%d", memory.total, memory.free);
+		return -1.0;
+	}
+
+	double used_memory_gb = (memory.total - memory.free) / (1024.0 * 1024.0 * 1024.0);
+	syslog(LOG_INFO, "Calculated used memory: %0.2f GB", used_memory_gb);
+	return used_memory_gb;
 }

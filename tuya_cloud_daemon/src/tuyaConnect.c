@@ -3,6 +3,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tuya_error_code.h"
 #include "system_interface.h"
@@ -10,7 +11,7 @@
 #include "tuyalink_core.h"
 #include "tuya_cacert.h"
 #include "tuyaConnect.h"
-
+#include "cJSON.h"
 
 static void outToFile(char *str)
 {
@@ -19,9 +20,6 @@ static void outToFile(char *str)
     fprintf(fp, "%s\n", str);
     fclose(fp);
 }
-
-#include "cJSON.h"
-#include <string.h>
 
 char* parse_string(const char *json_string) {
     cJSON *json_data = cJSON_Parse(json_string);

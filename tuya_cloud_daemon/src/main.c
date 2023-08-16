@@ -5,6 +5,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <libubus.h>
+#include <libubox/blobmsg_json.h>
 
 #include "tuyaConnect.h"
 #include "argParser.h"
@@ -38,7 +40,6 @@ int main(int argc, char **argv)
 	Arguments args;
 	parse_arguments(argc, argv, &args);
 
-	daemonize();
 	syslog(LOG_INFO, "Daemon started");
 
 	int ret = tuya_connect(client, args.deviceId, args.deviceSecret);
@@ -48,21 +49,39 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
+	struct ubus_context *ctx;
+	uloop_init();
+	uint32_t id;
+
+	ctx = ubus_connect(NULL);
+	if (!ctx)
+	{
+		syslog(LOG_ERR, "Failed to connect to ubus");
+		goto cleanup;
+	}
+
+	if (ubus_lookup_id(ctx, "system", &id))
+	{
+		syslog(LOG_ERR, "Failed to lookup 'system' on UBUS.");
+		goto cleanup;
+	}
+
 	while (run)
 	{
-		tuya_mqtt_loop(client);
-		double memory_usage = get_memory_usage();
+		double memory_usage = get_memory_usage(ctx, id);
 		if (memory_usage > 0)
 		{
 			send_memory_usage_to_tuya(client, memory_usage, args.deviceId);
 			syslog(LOG_INFO, "Sent memory usage to Tuya: %0.2f GB", memory_usage);
 		}
+		tuya_mqtt_loop(client);
 		sleep(5);
 	}
 
 cleanup:
 	tuya_mqtt_disconnect(client);
 	tuya_mqtt_deinit(client);
+	ubus_free(ctx);
 	syslog(LOG_INFO, "Disconnected from Tuya");
 	closelog();
 	return 0;

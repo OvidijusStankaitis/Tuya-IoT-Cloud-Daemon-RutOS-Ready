@@ -1,5 +1,5 @@
 CFLAGS=-Wall
-LDFLAGS=-llink_core -lutils_modules -lplatform_port -lmiddleware_implementation -largp 
+LDFLAGS=-llink_core -lutils_modules -lplatform_port -lmiddleware_implementation -largp -lubus -lubox -lblobmsg_json 
 SOURCES=main.c tuyaConnect.c argParser.c getSysInfo.c daemon.c
 OBJECTS=$(SOURCES:.c=.o)
 BIN=tuya_cloud_daemon

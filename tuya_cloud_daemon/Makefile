@@ -9,7 +9,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/tuya_cloud_daemon
 	CATEGORY:=Base system
 	TITLE:=tuya_cloud_daemon
-	DEPENDS:=+USE_UCLIBC:argp-standalone +tuya-sdk
+	DEPENDS:=+USE_UCLIBC:argp-standalone +tuya-sdk +libubus +libubox +libblobmsg-json
 endef
 
 define Package/tuya_cloud_daemon/description

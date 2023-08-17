@@ -35,6 +35,7 @@ Follow this [guide](https://github.com/tuya/tuya-iot-core-sdk) on how to setup a
 cd openwrt
 make menuconfig
 ```
+![menuconfig](https://github.com/OvidijusStankaitis/Tuya-IoT-Cloud-Daemon-RutOS-Ready/assets/82393494/3aeb84e1-2ddf-457d-b90f-880a8350889e)
 * You need to find your package and while it is selected you press Y and then save. The package will be specified.
 
 
@@ -82,3 +83,4 @@ opkg install --force-depends --force-reinstall <package_name_post_compilation>.i
 * Lauch the program through a web interface:
 
 In the address bar type in you router's IP address. Navigate to Tuya IoT service, enable the program and input your parameters. After applying changes the daemon will launch and start sending memory usage data to the Tuya cloud.
+![Tuya](https://github.com/OvidijusStankaitis/Tuya-IoT-Cloud-Daemon-RutOS-Ready/assets/82393494/857254e7-2e4b-4d07-910a-39122aee4f9c)
